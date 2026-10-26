@@ -2,7 +2,7 @@
 
 > **专为骑行爱好者打造的沿途美食与景点雷达 · 完美配合高德地图使用**
 
-[![Build Android APK](https://github.com/your-username/RideRadar/actions/workflows/build-apk.yml/badge.svg)](https://github.com/your-username/RideRadar/actions)
+[![Build Android APK](https://github.com/KYO11978/RideRadar/actions/workflows/build-apk.yml/badge.svg)](https://github.com/KYO11978/RideRadar/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform: Android](https://img.shields.io/badge/Platform-Android%208.0%2B-blue.svg)](https://android.com)
 
