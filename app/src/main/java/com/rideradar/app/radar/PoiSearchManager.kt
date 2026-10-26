@@ -19,6 +19,29 @@ class PoiSearchManager(private val amapKey: String) {
 
     private val gson = Gson()
 
+    companion object {
+        // 常见大型大众连锁品牌黑名单库 (小众探店模式下直接过滤)
+        private val CHAIN_BRANDS = listOf(
+            // 咖啡与茶饮巨头
+            "星巴克", "starbucks", "瑞幸", "luckin", "库迪", "cottie", "蜜雪冰城",
+            "喜茶", "heytea", "奈雪", "霸王茶姬", "茶百道", "古茗", "一点点",
+            "coco都可", "coco", "沪上阿姨", "快乐柠檬", "益禾堂", "茶颜悦色",
+            "幸运咖", "manner", "m stand", "tims", "tim hortons", "七分甜",
+            // 常见快餐西餐
+            "肯德基", "kfc", "麦当劳", "mcdonald", "必胜客", "pizzahut", "汉堡王",
+            "burger king", "德克士", "华莱士", "塔斯汀", "赛百味", "subway",
+            "达美乐", "domino", "尊宝比萨",
+            // 大众中式快餐与火锅
+            "海底捞", "西贝", "太二", "沙县小吃", "兰州拉面", "黄焖鸡米饭",
+            "杨国福", "张亮麻辣烫", "绝味鸭脖", "周黑鸭", "正新鸡排", "紫燕百味鸡",
+            "老乡鸡", "大米先生", "真功夫", "吉野家", "和府捞面", "永和大王",
+            "呷哺呷哺", "小肥羊", "小龙坎", "巴奴",
+            // 常见便利超市
+            "全家", "family mart", "罗森", "lawson", "7-eleven", "711",
+            "便利蜂", "美宜佳"
+        )
+    }
+
     /**
      * 执行周边真实兴趣点检索 (纯真实数据，无任何模拟)
      * @param lat 当前纬度
@@ -26,13 +49,15 @@ class PoiSearchManager(private val amapKey: String) {
      * @param radius 探测半径 (米)
      * @param includeFood 是否包含美食
      * @param includeScenic 是否包含景点
+     * @param filterChain 是否过滤大型连锁店 (小众探店模式)
      */
     suspend fun searchAround(
         lat: Double,
         lon: Double,
         radius: Int,
         includeFood: Boolean = true,
-        includeScenic: Boolean = true
+        includeScenic: Boolean = true,
+        filterChain: Boolean = true
     ): List<PoiItem> = withContext(Dispatchers.IO) {
         if (amapKey.isBlank()) {
             Log.d("PoiSearchManager", "高德 Key 为空，跳过检索")
@@ -77,7 +102,13 @@ class PoiSearchManager(private val amapKey: String) {
                     val item = element.asJsonObject
                     val id = item.get("id")?.asString ?: ""
                     val rawName = item.get("name")?.asString ?: "未知地点"
-                    // 智能净化店名：去掉“xxxx广场店”、“人民广场分店”等啰嗦分店后缀
+
+                    // 1. 小众探店过滤：若开启且属于常见连锁店，直接剔除
+                    if (filterChain && isChainStore(rawName)) {
+                        continue
+                    }
+
+                    // 2. 智能净化店名：去掉“xxxx广场店”、“分店”等啰嗦后缀
                     val cleanedName = cleanPoiName(rawName)
                     val type = item.get("type")?.asString ?: "生活服务"
                     val distance = item.get("distance")?.asString?.toIntOrNull() ?: radius
@@ -114,12 +145,15 @@ class PoiSearchManager(private val amapKey: String) {
     }
 
     /**
+     * 判断是否属于常见大型连锁店
+     */
+    private fun isChainStore(name: String): Boolean {
+        val lower = name.lowercase()
+        return CHAIN_BRANDS.any { brand -> lower.contains(brand.lowercase()) }
+    }
+
+    /**
      * 智能清洗店名：过滤各种“xxxx广场店”、“分店”、“支店”等位置后缀
-     * 示例：
-     *   "瑞幸咖啡(万达广场店)" -> "瑞幸咖啡"
-     *   "麦当劳（人民广场分店）" -> "麦当劳"
-     *   "肯德基-静安大悦城店" -> "肯德基"
-     *   "霸王茶姬南京西路店" -> "霸王茶姬"
      */
     private fun cleanPoiName(rawName: String): String {
         var name = rawName.trim()
@@ -131,11 +165,9 @@ class PoiSearchManager(private val amapKey: String) {
         name = name.replace(Regex("\\s*[-_—–]\\s*.*店$"), "")
 
         // 3. 去除紧随在品牌名后面的商场/广场/路段分店后缀
-        // 匹配例如：xxx广场店、xxx大厦店、xxx商城店、xxx中心店、xxx路店、xxx街店、xxx分店、xxx一店、xxx二店
         val storeSuffixRegex = Regex("(?:[\\u4e00-\\u9fa5A-Za-z0-9]+(?:广场|商场|商城|大厦|天地|中心|路|街|大道|桥|站|园))?(?:分店|旗舰店|总店|专卖店|精品店|一店|二店|三店|四店|店)$")
         if (name.length > 4 && storeSuffixRegex.containsMatchIn(name)) {
             val stripped = name.replace(storeSuffixRegex, "").trim()
-            // 确保去除后至少保留2个字的核心品牌名（避免有些店名本身就叫“小吃店”被完全抹掉）
             if (stripped.length >= 2) {
                 name = stripped
             }

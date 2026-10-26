@@ -163,6 +163,14 @@
                     android:text="播报沿途网红景点/名胜"
                     android:textColor="@color/text_main" />
 
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switch_niche_mode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:text="小众探店模式 (过滤大型连锁，专寻特色小店)"
+                    android:textColor="@color/accent" />
+
                 <!-- 高德 API Key 输入框 -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/til_amap_key"

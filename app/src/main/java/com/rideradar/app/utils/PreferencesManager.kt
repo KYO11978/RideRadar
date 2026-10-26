@@ -14,7 +14,12 @@ class PreferencesManager(context: Context) {
         private const val KEY_SPEED_ADAPTIVE = "speed_adaptive"
         private const val KEY_FILTER_FOOD = "filter_food"
         private const val KEY_FILTER_SCENIC = "filter_scenic"
+        private const val KEY_NICHE_MODE = "niche_mode"
     }
+
+    var isNicheMode: Boolean
+        get() = prefs.getBoolean(KEY_NICHE_MODE, true)
+        set(value) = prefs.edit().putBoolean(KEY_NICHE_MODE, value).apply()
 
     var amapKey: String
         get() = prefs.getString(KEY_AMAP_KEY, "") ?: ""

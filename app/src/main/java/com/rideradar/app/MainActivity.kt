@@ -1,6 +1,7 @@
 package com.rideradar.app
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -41,7 +42,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 广播接收器：更新骑行状态与POI发现卡片
+    // 广播接收器：更新骑行状态、服务启停状态、POI发现卡片
     private val radarUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
@@ -50,6 +51,12 @@ class MainActivity : AppCompatActivity() {
                     val lat = intent.getDoubleExtra("lat", 0.0)
                     val lon = intent.getDoubleExtra("lon", 0.0)
                     binding.tvLocationDebug.text = String.format("时速: %.1f km/h · 坐标: %.4f, %.4f", speed, lat, lon)
+                }
+                RadarFloatingService.BROADCAST_SERVICE_STARTED -> {
+                    updateButtonStatus(true)
+                }
+                RadarFloatingService.BROADCAST_SERVICE_STOPPED -> {
+                    updateButtonStatus(false)
                 }
                 RadarFloatingService.BROADCAST_POI_FOUND -> {
                     val name = intent.getStringExtra("poi_name") ?: "未知"
@@ -94,6 +101,7 @@ class MainActivity : AppCompatActivity() {
         binding.switchAdaptiveSpeed.isChecked = prefs.isSpeedAdaptive
         binding.switchFilterFood.isChecked = prefs.isFilterFood
         binding.switchFilterScenic.isChecked = prefs.isFilterScenic
+        binding.switchNicheMode.isChecked = prefs.isNicheMode
         binding.etAmapKey.setText(prefs.amapKey)
 
         // 半径滑块监听
@@ -116,6 +124,9 @@ class MainActivity : AppCompatActivity() {
         binding.switchFilterScenic.setOnCheckedChangeListener { _, isChecked ->
             prefs.isFilterScenic = isChecked
         }
+        binding.switchNicheMode.setOnCheckedChangeListener { _, isChecked ->
+            prefs.isNicheMode = isChecked
+        }
 
         // 高德 Key 实时监听与格式校验
         fun validateAndSaveKey(keyText: String) {
@@ -124,7 +135,7 @@ class MainActivity : AppCompatActivity() {
 
             when {
                 trimmed.isEmpty() -> {
-                    binding.tilAmapKey.helperText = "未填将默认使用智能模拟路过"
+                    binding.tilAmapKey.helperText = "未填 Key 将跳过数据查询"
                     binding.tilAmapKey.error = null
                 }
                 trimmed.length == 32 -> {
@@ -133,12 +144,12 @@ class MainActivity : AppCompatActivity() {
                 }
                 else -> {
                     binding.tilAmapKey.helperText = null
-                    binding.tilAmapKey.error = "⚠️ 当前仅 ${trimmed.length} 位（高德标准为 32 位），请检查末尾是否被截断"
+                    binding.tilAmapKey.error = "⚠️ 当前仅 ${trimmed.length} 位（高德标准为 32 位），请检查是否未完整复制"
                 }
             }
 
             // 如果服务正在后台运行，实时热更新它的 Key
-            if (RadarFloatingService.isServiceRunning) {
+            if (isRadarServiceRunningActually()) {
                 val updateIntent = Intent(this, RadarFloatingService::class.java).apply {
                     action = RadarFloatingService.ACTION_UPDATE_KEY
                 }
@@ -151,11 +162,11 @@ class MainActivity : AppCompatActivity() {
             validateAndSaveKey(it?.toString() ?: "")
         }
 
-        // 启停雷达按钮 (只有点下去才会开启)
-        updateButtonStatus()
+        // 启停雷达大按钮：严格按照真实状态受控
+        updateButtonStatus(isRadarServiceRunningActually())
         binding.btnToggleRadar.setOnClickListener {
             prefs.amapKey = binding.etAmapKey.text?.toString()?.trim() ?: ""
-            if (RadarFloatingService.isServiceRunning) {
+            if (isRadarServiceRunningActually()) {
                 stopRadarService()
             } else {
                 startRadarServiceWithCheck()
@@ -165,17 +176,32 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        updateButtonStatus()
+        updateButtonStatus(isRadarServiceRunningActually())
     }
 
-    private fun updateButtonStatus() {
-        if (RadarFloatingService.isServiceRunning) {
+    /**
+     * 系统级检查后台雷达服务是否正在运行
+     */
+    private fun isRadarServiceRunningActually(): Boolean {
+        if (RadarFloatingService.isServiceRunning) return true
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        @Suppress("DEPRECATION")
+        for (service in manager.getRunningServices(Int.MAX_VALUE)) {
+            if (RadarFloatingService::class.java.name == service.service.className) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun updateButtonStatus(isRunning: Boolean) {
+        if (isRunning) {
             binding.tvRadarStatus.text = getString(R.string.radar_status_running)
-            binding.btnToggleRadar.text = getString(R.string.btn_stop_radar)
+            binding.btnToggleRadar.text = getString(R.string.btn_stop_radar) // "关闭雷达"
             binding.btnToggleRadar.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_red_light))
         } else {
             binding.tvRadarStatus.text = getString(R.string.radar_status_stopped)
-            binding.btnToggleRadar.text = getString(R.string.btn_start_radar)
+            binding.btnToggleRadar.text = getString(R.string.btn_start_radar) // "开启骑行伴游雷达"
             binding.btnToggleRadar.setBackgroundColor(ContextCompat.getColor(this, R.color.primary))
         }
     }
@@ -223,8 +249,8 @@ class MainActivity : AppCompatActivity() {
         } else {
             startService(serviceIntent)
         }
-        updateButtonStatus()
-        Toast.makeText(this, "伴游雷达已启动！可切到高德地图骑行", Toast.LENGTH_SHORT).show()
+        updateButtonStatus(true)
+        Toast.makeText(this, "伴游雷达已开启！可切到高德地图骑行", Toast.LENGTH_SHORT).show()
     }
 
     private fun stopRadarService() {
@@ -232,8 +258,8 @@ class MainActivity : AppCompatActivity() {
             action = RadarFloatingService.ACTION_STOP
         }
         stopService(serviceIntent)
-        updateButtonStatus()
-        Toast.makeText(this, "雷达已停止", Toast.LENGTH_SHORT).show()
+        updateButtonStatus(false)
+        Toast.makeText(this, "伴游雷达已关闭", Toast.LENGTH_SHORT).show()
     }
 
     private fun addPoiCard(poi: PoiItem) {
@@ -254,6 +280,8 @@ class MainActivity : AppCompatActivity() {
         val filter = IntentFilter().apply {
             addAction(RadarFloatingService.BROADCAST_STATUS_UPDATE)
             addAction(RadarFloatingService.BROADCAST_POI_FOUND)
+            addAction(RadarFloatingService.BROADCAST_SERVICE_STARTED)
+            addAction(RadarFloatingService.BROADCAST_SERVICE_STOPPED)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(radarUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)

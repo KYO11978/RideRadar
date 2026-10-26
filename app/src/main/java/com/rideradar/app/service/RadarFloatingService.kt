@@ -51,6 +51,8 @@ class RadarFloatingService : LifecycleService(), LocationListener {
         const val ACTION_UPDATE_KEY = "ACTION_UPDATE_KEY"
         const val BROADCAST_POI_FOUND = "com.rideradar.app.POI_FOUND"
         const val BROADCAST_STATUS_UPDATE = "com.rideradar.app.STATUS_UPDATE"
+        const val BROADCAST_SERVICE_STARTED = "com.rideradar.app.SERVICE_STARTED"
+        const val BROADCAST_SERVICE_STOPPED = "com.rideradar.app.SERVICE_STOPPED"
         private const val CHANNEL_ID = "ride_radar_channel"
         private const val NOTIFICATION_ID = 1001
         var isServiceRunning = false
@@ -70,6 +72,7 @@ class RadarFloatingService : LifecycleService(), LocationListener {
         initFloatingBubble()
         startLocationUpdates()
         isServiceRunning = true
+        sendBroadcast(Intent(BROADCAST_SERVICE_STARTED))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -227,7 +230,8 @@ class RadarFloatingService : LifecycleService(), LocationListener {
                 lon = location.longitude,
                 radius = effectiveRadius,
                 includeFood = prefs.isFilterFood,
-                includeScenic = prefs.isFilterScenic
+                includeScenic = prefs.isFilterScenic,
+                filterChain = prefs.isNicheMode
             )
             processFoundPois(pois)
         }
@@ -278,6 +282,7 @@ class RadarFloatingService : LifecycleService(), LocationListener {
                 e.printStackTrace()
             }
         }
+        sendBroadcast(Intent(BROADCAST_SERVICE_STOPPED))
     }
 
     override fun onBind(intent: Intent): IBinder? {

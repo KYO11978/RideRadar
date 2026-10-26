@@ -3,7 +3,7 @@
     <string name="radar_status_stopped">雷达已停止</string>
     <string name="radar_status_running">雷达正在后台伴游探测中…</string>
     <string name="btn_start_radar">开启骑行伴游雷达</string>
-    <string name="btn_stop_radar">停止伴游雷达</string>
+    <string name="btn_stop_radar">关闭雷达</string>
     <string name="settings_title">雷达配置与偏好</string>
     <string name="amap_key_hint">高德 Web 服务 Key (免配可体验模拟)</string>
     <string name="radius_label">探测半径：%d 米</string>
