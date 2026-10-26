@@ -176,10 +176,12 @@
 
                 <!-- 高德 API Key 输入框 -->
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/til_amap_key"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:hint="高德开放平台 Web 服务 Key (选填)"
+                    app:helperTextEnabled="true"
                     app:boxBackgroundColor="@color/surface_dark"
                     app:boxCornerRadiusBottomEnd="8dp"
                     app:boxCornerRadiusBottomStart="8dp"

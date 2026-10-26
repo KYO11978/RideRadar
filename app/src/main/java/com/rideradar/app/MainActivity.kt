@@ -17,6 +17,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.widget.doAfterTextChanged
 import com.rideradar.app.databinding.ActivityMainBinding
 import com.rideradar.app.radar.PoiItem
 import com.rideradar.app.service.RadarFloatingService
@@ -114,6 +115,40 @@ class MainActivity : AppCompatActivity() {
         }
         binding.switchFilterScenic.setOnCheckedChangeListener { _, isChecked ->
             prefs.isFilterScenic = isChecked
+        }
+
+        // 高德 Key 实时监听与格式校验
+        fun validateAndSaveKey(keyText: String) {
+            val trimmed = keyText.trim()
+            prefs.amapKey = trimmed
+
+            when {
+                trimmed.isEmpty() -> {
+                    binding.tilAmapKey.helperText = "未填将默认使用智能模拟路过"
+                    binding.tilAmapKey.error = null
+                }
+                trimmed.length == 32 -> {
+                    binding.tilAmapKey.helperText = "✅ 高德 Web Key 格式正确，已实时生效"
+                    binding.tilAmapKey.error = null
+                }
+                else -> {
+                    binding.tilAmapKey.helperText = null
+                    binding.tilAmapKey.error = "⚠️ 当前仅 ${trimmed.length} 位（高德标准为 32 位），请检查末尾是否被截断"
+                }
+            }
+
+            // 如果服务正在后台运行，实时热更新它的 Key
+            if (RadarFloatingService.isServiceRunning) {
+                val updateIntent = Intent(this, RadarFloatingService::class.java).apply {
+                    action = RadarFloatingService.ACTION_UPDATE_KEY
+                }
+                startService(updateIntent)
+            }
+        }
+
+        validateAndSaveKey(prefs.amapKey)
+        binding.etAmapKey.doAfterTextChanged {
+            validateAndSaveKey(it?.toString() ?: "")
         }
 
         // 启停雷达按钮

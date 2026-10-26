@@ -49,6 +49,7 @@ class RadarFloatingService : LifecycleService(), LocationListener {
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
         const val ACTION_MOCK_TEST = "ACTION_MOCK_TEST"
+        const val ACTION_UPDATE_KEY = "ACTION_UPDATE_KEY"
         const val BROADCAST_POI_FOUND = "com.rideradar.app.POI_FOUND"
         const val BROADCAST_STATUS_UPDATE = "com.rideradar.app.STATUS_UPDATE"
         private const val CHANNEL_ID = "ride_radar_channel"
@@ -80,6 +81,9 @@ class RadarFloatingService : LifecycleService(), LocationListener {
             }
             ACTION_MOCK_TEST -> {
                 triggerMockDetection()
+            }
+            ACTION_UPDATE_KEY -> {
+                poiSearchManager = PoiSearchManager(prefs.amapKey)
             }
         }
         return START_STICKY
