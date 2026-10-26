@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#00C48C</color>
+    <color name="primary_dark">#009A6C</color>
+    <color name="accent">#FF9800</color>
+    <color name="surface_dark">#1E222B</color>
+    <color name="surface_card">#272D3B</color>
+    <color name="text_main">#FFFFFF</color>
+    <color name="text_sub">#9E9EA7</color>
+    <color name="bubble_bg">#EE1E2430</color>
+    <color name="bubble_border">#00C48C</color>
+    <color name="tag_food">#FF7043</color>
+    <color name="tag_scenic">#26A69A</color>
+</resources>

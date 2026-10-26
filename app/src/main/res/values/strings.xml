@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">骑行雷达 (RideRadar)</string>
+    <string name="radar_status_stopped">雷达已停止</string>
+    <string name="radar_status_running">雷达正在后台伴游探测中…</string>
+    <string name="btn_start_radar">开启骑行伴游雷达</string>
+    <string name="btn_stop_radar">停止伴游雷达</string>
+    <string name="settings_title">雷达配置与偏好</string>
+    <string name="amap_key_hint">高德 Web 服务 Key (免配可体验模拟)</string>
+    <string name="radius_label">探测半径：%d 米</string>
+    <string name="speed_adaptive_title">速度自适应探测 (骑快时自动前探80米)</string>
+    <string name="voice_enabled_title">开启耳机/外放语音播报</string>
+    <string name="filter_food">仅播报特色美食</string>
+    <string name="filter_scenic">仅播报网红景点</string>
+    <string name="recent_pois_title">沿途发现的精彩地点</string>
+    <string name="jump_to_amap">高德导航</string>
+</resources>
