@@ -48,7 +48,6 @@ class RadarFloatingService : LifecycleService(), LocationListener {
     companion object {
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
-        const val ACTION_MOCK_TEST = "ACTION_MOCK_TEST"
         const val ACTION_UPDATE_KEY = "ACTION_UPDATE_KEY"
         const val BROADCAST_POI_FOUND = "com.rideradar.app.POI_FOUND"
         const val BROADCAST_STATUS_UPDATE = "com.rideradar.app.STATUS_UPDATE"
@@ -78,9 +77,6 @@ class RadarFloatingService : LifecycleService(), LocationListener {
         when (intent?.action) {
             ACTION_STOP -> {
                 stopSelf()
-            }
-            ACTION_MOCK_TEST -> {
-                triggerMockDetection()
             }
             ACTION_UPDATE_KEY -> {
                 poiSearchManager = PoiSearchManager(prefs.amapKey)
@@ -268,19 +264,7 @@ class RadarFloatingService : LifecycleService(), LocationListener {
         sendBroadcast(poiIntent)
     }
 
-    /**
-     * 模拟测试方法（室内无骑车条件时）
-     */
-    private fun triggerMockDetection() {
-        val mockPois = poiSearchManager.generateMockPois(
-            lat = 31.2304,
-            lon = 121.4737,
-            radius = prefs.searchRadius,
-            includeFood = prefs.isFilterFood,
-            includeScenic = prefs.isFilterScenic
-        )
-        processFoundPois(mockPois)
-    }
+
 
     override fun onDestroy() {
         super.onDestroy()

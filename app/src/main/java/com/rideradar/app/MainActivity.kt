@@ -151,7 +151,7 @@ class MainActivity : AppCompatActivity() {
             validateAndSaveKey(it?.toString() ?: "")
         }
 
-        // 启停雷达按钮
+        // 启停雷达按钮 (只有点下去才会开启)
         updateButtonStatus()
         binding.btnToggleRadar.setOnClickListener {
             prefs.amapKey = binding.etAmapKey.text?.toString()?.trim() ?: ""
@@ -161,20 +161,11 @@ class MainActivity : AppCompatActivity() {
                 startRadarServiceWithCheck()
             }
         }
+    }
 
-        // 室内一键模拟路过测试
-        binding.btnTestMock.setOnClickListener {
-            if (!RadarFloatingService.isServiceRunning) {
-                Toast.makeText(this, "正在为您自动启动雷达并模拟路过…", Toast.LENGTH_SHORT).show()
-                startRadarServiceWithCheck()
-            }
-            binding.root.postDelayed({
-                val mockIntent = Intent(this, RadarFloatingService::class.java).apply {
-                    action = RadarFloatingService.ACTION_MOCK_TEST
-                }
-                startService(mockIntent)
-            }, 800)
-        }
+    override fun onResume() {
+        super.onResume()
+        updateButtonStatus()
     }
 
     private fun updateButtonStatus() {

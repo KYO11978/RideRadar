@@ -9,7 +9,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
-import kotlin.random.Random
 
 class PoiSearchManager(private val amapKey: String) {
 
@@ -21,7 +20,7 @@ class PoiSearchManager(private val amapKey: String) {
     private val gson = Gson()
 
     /**
-     * 执行周边兴趣点检索
+     * 执行周边真实兴趣点检索 (纯真实数据，无任何模拟)
      * @param lat 当前纬度
      * @param lon 当前经度
      * @param radius 探测半径 (米)
@@ -35,9 +34,9 @@ class PoiSearchManager(private val amapKey: String) {
         includeFood: Boolean = true,
         includeScenic: Boolean = true
     ): List<PoiItem> = withContext(Dispatchers.IO) {
-        // 如果未填 Key，进入贴心的体验模拟模式
         if (amapKey.isBlank()) {
-            return@withContext generateMockPois(lat, lon, radius, includeFood, includeScenic)
+            Log.d("PoiSearchManager", "高德 Key 为空，跳过检索")
+            return@withContext emptyList()
         }
 
         val typeCodes = mutableListOf<String>()
@@ -77,7 +76,9 @@ class PoiSearchManager(private val amapKey: String) {
                 for (element in poisJson) {
                     val item = element.asJsonObject
                     val id = item.get("id")?.asString ?: ""
-                    val name = item.get("name")?.asString ?: "未知地点"
+                    val rawName = item.get("name")?.asString ?: "未知地点"
+                    // 智能净化店名：去掉“xxxx广场店”、“人民广场分店”等啰嗦分店后缀
+                    val cleanedName = cleanPoiName(rawName)
                     val type = item.get("type")?.asString ?: "生活服务"
                     val distance = item.get("distance")?.asString?.toIntOrNull() ?: radius
                     val locationStr = item.get("location")?.asString ?: "$lon,$lat"
@@ -93,7 +94,7 @@ class PoiSearchManager(private val amapKey: String) {
                     resultList.add(
                         PoiItem(
                             id = id,
-                            name = name,
+                            name = cleanedName,
                             type = if (type.contains("餐饮")) "美食" else "景点",
                             rating = rating,
                             distance = distance,
@@ -113,53 +114,33 @@ class PoiSearchManager(private val amapKey: String) {
     }
 
     /**
-     * 智能模拟生成器（免配Key或室内测试时使用）
+     * 智能清洗店名：过滤各种“xxxx广场店”、“分店”、“支店”等位置后缀
+     * 示例：
+     *   "瑞幸咖啡(万达广场店)" -> "瑞幸咖啡"
+     *   "麦当劳（人民广场分店）" -> "麦当劳"
+     *   "肯德基-静安大悦城店" -> "肯德基"
+     *   "霸王茶姬南京西路店" -> "霸王茶姬"
      */
-    fun generateMockPois(
-        lat: Double,
-        lon: Double,
-        radius: Int,
-        includeFood: Boolean,
-        includeScenic: Boolean
-    ): List<PoiItem> {
-        val mockData = mutableListOf<PoiItem>()
-        val foodNames = listOf("老上海生煎馆", "阿婆手打葱油饼", "古法牛肉拉面", "弄堂小馄饨", "现烤手工面包屋")
-        val scenicNames = listOf("历史文化保护街区", "滨江骑行绿道驿站", "近代历史建筑群", "城市街角口袋公园")
+    private fun cleanPoiName(rawName: String): String {
+        var name = rawName.trim()
 
-        if (includeFood) {
-            val name = foodNames[Random.nextInt(foodNames.size)]
-            val dist = Random.nextInt(15, radius.coerceAtLeast(20))
-            mockData.add(
-                PoiItem(
-                    id = "mock_food_${System.currentTimeMillis()}",
-                    name = name,
-                    type = "美食",
-                    rating = String.format("%.1f", Random.nextDouble(4.5, 4.9)),
-                    distance = dist,
-                    latitude = lat + 0.0002,
-                    longitude = lon + 0.0002,
-                    address = "骑行沿途道路右侧"
-                )
-            )
+        // 1. 去除中英文括号及括号里的分店信息：如 (万达广场店)、（人民广场店）、(二店)
+        name = name.replace(Regex("\\s*[\\(（].*?[\\)）]\\s*"), "")
+
+        // 2. 去除破折号、连接符后的分店名：如 -万达店、—淮海路店
+        name = name.replace(Regex("\\s*[-_—–]\\s*.*店$"), "")
+
+        // 3. 去除紧随在品牌名后面的商场/广场/路段分店后缀
+        // 匹配例如：xxx广场店、xxx大厦店、xxx商城店、xxx中心店、xxx路店、xxx街店、xxx分店、xxx一店、xxx二店
+        val storeSuffixRegex = Regex("(?:[\\u4e00-\\u9fa5A-Za-z0-9]+(?:广场|商场|商城|大厦|天地|中心|路|街|大道|桥|站|园))?(?:分店|旗舰店|总店|专卖店|精品店|一店|二店|三店|四店|店)$")
+        if (name.length > 4 && storeSuffixRegex.containsMatchIn(name)) {
+            val stripped = name.replace(storeSuffixRegex, "").trim()
+            // 确保去除后至少保留2个字的核心品牌名（避免有些店名本身就叫“小吃店”被完全抹掉）
+            if (stripped.length >= 2) {
+                name = stripped
+            }
         }
 
-        if (includeScenic && Random.nextBoolean()) {
-            val name = scenicNames[Random.nextInt(scenicNames.size)]
-            val dist = Random.nextInt(25, radius.coerceAtLeast(30))
-            mockData.add(
-                PoiItem(
-                    id = "mock_scenic_${System.currentTimeMillis()}",
-                    name = name,
-                    type = "景点",
-                    rating = String.format("%.1f", Random.nextDouble(4.6, 5.0)),
-                    distance = dist,
-                    latitude = lat + 0.0004,
-                    longitude = lon + 0.0003,
-                    address = "骑行绿道旁"
-                )
-            )
-        }
-
-        return mockData
+        return if (name.isBlank()) rawName else name
     }
 }
